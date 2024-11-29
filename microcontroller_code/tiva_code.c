@@ -13,26 +13,24 @@ void Delay_us(int time);
 void Delay_ms(int ms);  
 void Systick_Wait(unsigned long delay);
 void turningright_circular_200ms(void);
-void manual_boob(char command);
+void manual_boom(char command);
 
 void UART_init(void);
 char readChar(void);
 void printChar(char c);
 void printString(char * string);
-char* readString(char delimiter);
 
-void distance_front(void);
 float distance_side(void);
 float distance_filter(float distance_buffer[], float current_distance, int *index);
 
 void Forward(int speed, int turn);
-void move_boobbot(float speed, float turn);
+void move_boombot(float speed, float turn);
 void stop(void);
 
 float PID_controller(float current_distance, float params[], float errors[]);
 
 int main(void){
-
+		//initialisations
     PortA_Init();  
 		PortB_Init();
 		PortD_Init();
@@ -40,25 +38,23 @@ int main(void){
 		PortF_Init();
 		UART_init();
 		SysTick_Init();
-		float side;
-		float side_filtered;
-		float side_distances[3];
-		int side_index = 0;
-		float control_output;
-		char mode;
-		bool mode_flag = 1;
-    float params[4] = {1.0, 0.0, 0.5, 20.0}; // Kp, Ki, Kd, required_distance
-    float errors[2] = {0, 0}; // previous_error, sum_of_errors
+		float side;      											//unfiltered side distance
+		float side_filtered;									//filtered side distance
+		float side_distances[3];							//running average array
+		int side_index = 0;										//array index
+		float control_output;									//Output from PID function
+		char mode;														//mode received from bluetooth
+		bool mode_flag = 1;										//mode flag to set/reset during operation, 1 for automatic(default) and 0 for manual
+    float params[4] = {1.0, 0.0, 0.5, 20.0}; // PID Parameters {Kp, Ki, Kd, required_distance}
+    float errors[2] = {0, 0}; // Filter parameters {previous_error, sum_of_errors}
 		
 		while(1){
 			mode = readChar();
 			if(mode == 'a') mode_flag = 1;
 			else if(mode == 'm') mode_flag = 0; 
 			
-			//AUTOMATIC
+			//AUTOMATIC MODE
 			while(mode_flag){
-
-				//printString("automatic \n");
 				mode = readChar();
 				if(mode=='m'){
 					mode_flag = 0;
@@ -69,46 +65,46 @@ int main(void){
 				Delay_ms(50);
 				
 				control_output = PID_controller(side, params, errors);
-				while((GPIOA->DATA & 1<<6)==0){
+				while((GPIOA->DATA & 1<<6)==0){     											//Front wall detection from IR sensor
 					stop();
-					turningright_circular_200ms();
-				}
-				move_boobbot(60,control_output);
-				if (side_filtered < 15) GPIOF->DATA = 0x02;
+					turningright_circular_200ms();													//circular turn
+				}	
+				move_boombot(60,control_output);
+				if (side_filtered < 15) GPIOF->DATA = 0x02;				//distance display with on board LEDs: red for too close, blue for too far and green for within +/-5 cm of 20 cm from the wall
 				else if (side_filtered > 25) GPIOF->DATA = 0x04;
 				else GPIOF->DATA = 0x8;		
 			}
 			
 			
-			//MANUAL
+			//MANUAL MODE
 			while(!mode_flag){
 				GPIOF->DATA=0x8;
-				//printString("manual \n");
 				char command = readChar();
 				if(command=='a'){
 					mode_flag = 1;
 					break;
 				}
-				manual_boob(command);
+				manual_boom(command);
 			}
 	}
 }
 
 
 void PortA_Init(void){    
-	  //port A initialise for trigger output
+	  //port A initialise for IR Sensor input and motor control
 		SYSCTL->RCGC2 |= 0x1;      
-    GPIOA->DIR = 1<<7 | 0x0000003F;        /* make PB7 an output pin */
-    GPIOA->DEN |= 0xFF;       /* make PB6 as digital pin */   
+    GPIOA->DIR = 1<<7 | 0x0000003F;      //Pins 7,5-0 for outpur and pin 6 for input from IR sensor
+    GPIOA->DEN |= 0xFF;     
 }
 
 void PortB_Init(void){
-	//port B initialise for trigger output
+	//port B initialisation for Ultrasonic sensor
 		SYSCTL->RCGC2 |= 0x2;      
     GPIOB->DIR = 1<<7;        /* make PB7 an output pin */
     GPIOB->DEN |= 0xFF;       /* make PB6 as digital pin */
 }
 
+//Initialisation of ports E,D,F for fail safe measures and debugging
 void PortE_Init(void){
 	SYSCTL->RCGC2|=0x00000010;
 	GPIOE->LOCK = 0x4C4F434B;
@@ -150,7 +146,7 @@ void SysTick_Init(void){
 		SysTick->CTRL= 0X05; 	
 }
 
-void Systick_Wait (unsigned long delay){
+void Systick_Wait (unsigned long delay){  
 	volatile unsigned long elapsedTime;      
 	unsigned long startTime = SysTick->VAL;  
 	do{
@@ -158,26 +154,19 @@ void Systick_Wait (unsigned long delay){
 	}
 	while (elapsedTime <= delay);    
 }
-void Delay_ms (int ms){  
+void Delay_ms (int ms){  //provides millisecond delay
     unsigned long i;
 	for( i=0; i< ms; i++){    
 		Systick_Wait(50000);      
 	}
 }
 
-void Delay_us (int time){   
+void Delay_us (int time){   //provides microsecond delay
     unsigned long i;
 	for( i=0; i < time; i++){    
 		Systick_Wait(50);      
 	}
 }	
-void distance_front(void){
-		while((GPIOA->DATA & 1<<6)==0){
-			turningright_circular_200ms();
-		}
-}
-
-
 float distance_side(void){
 		int previous_state = 0;
 		int current_state = 0;
@@ -263,19 +252,19 @@ void stop(void){
 	GPIOA->DATA&=0x00000040;
 	Delay_ms(10);
 }
-void move_boobbot(float speed, float turn){
+void move_boombot(float speed, float turn){ //GPIOA pins 5-2 for motor control of front two motors, A2 and A3 control right motor, A4 and A5 control left
 	float modturn;
 	int intspeed=speed;
-		if(turn<=5 && turn>=-5){
-			for(int i=0; i<30; i++){
-			  GPIOA->DATA|=0x0000000A<<1;      //GPIOE 1234 pins for forward, 1,2 right, 3,4 left
-				Delay_us(150*(speed));
-			  GPIOA->DATA&=0x00000040;
+		if(turn<=5 && turn>=-5){      				//Error margin of +/-5cm is considered safe for forward motion
+			for(int i=0; i<30; i++){						
+			  GPIOA->DATA|=0x0000000A<<1;       //'10' in A3 and A2 as well as '10' in A5 and A4 correspond to forward motion in both motors
+				Delay_us(150*(speed));						//Variables "speed" and "turn" decide delay of on cycles and act as a generated PWM duty cycle
+			  GPIOA->DATA&=0x00000040;					//stop
 				Delay_us(150*(100-speed));
 			}
-			printString("DIST 30.0 TURN 0");
+			printString("DIST 30.0 TURN 0");    //sends via bluetooth
 		}
-		else if(turn<-5){   //turning right
+		else if(turn<-5){                     //turning right
 				if(turn<(-intspeed)){
 					modturn=speed;
 				}
@@ -283,19 +272,16 @@ void move_boobbot(float speed, float turn){
 					modturn = -turn;
 				}
 			//TURN RIGHT
-			GPIOA->DATA|= 0x0000000C<<1; 
+			GPIOA->DATA|= 0x0000000C<<1;        //forward motion in left motor and backward in right motor
 			Delay_ms(10*modturn);            
-			GPIOA->DATA&= 0x00000040;		
-
-			//Delay_ms(50);
-
-			GPIOA->DATA|=0x0000000A<<1;
+			GPIOA->DATA&= 0x00000040;						//stop
+			GPIOA->DATA|=0x0000000A<<1;					//Forward movement after slight turn
 			Delay_ms(100);
-			GPIOA->DATA&=0x00000040;
-			printString("DIST 2.0 TURN 4");
+			GPIOA->DATA&=0x00000040;						//stop
+			printString("DIST 2.0 TURN 4");			//sends via bluetooth
 		}
 
-		else{       //turning left
+		else{       													//turning left
 				if(turn>(intspeed)){  
 					modturn=speed;
 				}
@@ -303,24 +289,20 @@ void move_boobbot(float speed, float turn){
 					modturn = turn;
 				}
 				//TURN LEFT
-				GPIOA->DATA|= 0x24;
+				GPIOA->DATA|= 0x24;								//forward motion in right motor and backward in left motor
         Delay_ms(10*modturn);             
-        GPIOA->DATA&= 0x00000040;
-
-				//Delay_ms(50);
-
-				GPIOA->DATA|=0x0000000A<<1;
+        GPIOA->DATA&= 0x00000040;					//stop
+				GPIOA->DATA|=0x0000000A<<1;				//Forward movement after slight turn
 				Delay_ms(100);
-				GPIOA->DATA&=0x00000040;
-
-				printString("DIST 2.0 TURN -4");
+				GPIOA->DATA&=0x00000040;					//stop
+				printString("DIST 2.0 TURN -4");  //sends via bluetooth
 		}
 	}
-void turningright_circular_200ms(void){
-	GPIOA->DATA|= 0x0000000C<<1;  // Adjust GPIO values for right turn
-  Delay_ms(200);             // Adjust delay as needed
-  GPIOA->DATA= 0x0;
-	printString("DIST 0.0 TURN 15");
+void turningright_circular_200ms(void){    //Cicular right turn with no moving forward
+	GPIOA->DATA|= 0x0000000C<<1;             // Circular right turn for 200 ms
+  Delay_ms(200);             
+  GPIOA->DATA&= 0x40;
+	printString("DIST 0.0 TURN 15");				 //sends data to bluetooth
 }
 
 void UART_init(void){
@@ -368,42 +350,10 @@ void printString(char * string){
         printChar(*(string++));
     }
 }
-char* readString(char delimiter){
-    int stringSize = 0;
-    char* string = (char*)calloc(10, sizeof(char));  // Allocate initial memory for the string
-    char c = readChar();  // Read the first character
-    printChar(c);  // Echo the character
-
-    // Loop until the delimiter character is received
-    while(c != delimiter)
-    {
-        // Store the received character in the string
-        *(string + stringSize) = c;
-        stringSize++;
-
-        // If string length exceeds the current allocated size, reallocate more memory
-        if((stringSize % 10) == 0)
-        {
-            string = (char*)realloc(string, (stringSize + 10) * sizeof(char));
-        }
-
-        // Read and echo the next character
-        c = readChar();
-        printChar(c);
-    }
-
-    // Return NULL if no characters were received
-    if(stringSize == 0)
-    {
-        return '\0';
-    }
-    return string;
-}
-
-void manual_boob(char command){
+void manual_boom(char command){
         switch (command) {
             case 'u':  // Move forward
-                move_boobbot(70, 0);
+                move_boombot(70, 0);
                 break;
             case 'd':  // Move backward
                 GPIOA->DATA|= 0x28;  // Adjust GPIO values for backward movement
@@ -428,4 +378,3 @@ void manual_boob(char command){
                 break;
         }			
 }
-
