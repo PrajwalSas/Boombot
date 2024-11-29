@@ -1,0 +1,113 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/receive_text"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:freezesText="true"
+        android:gravity="bottom"
+        android:scrollbars="vertical"
+        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+        android:padding="8dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="2dp"
+        android:background="?android:attr/listDivider" />
+
+    <!-- Canvas with Clear Button overlayed at the top right -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="231dp"
+        android:layout_marginTop="16dp">
+
+        <de.kai_morich.simple_bluetooth_terminal.CustomCanvasView
+            android:id="@+id/customCanvasView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Clear button at top right -->
+        <Button
+            android:id="@+id/clear_canvas_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Clear"
+            android:layout_gravity="top|end"
+            android:layout_margin="10dp"
+            android:backgroundTint="?android:attr/colorAccent"
+            android:textColor="@android:color/white" />
+    </FrameLayout>
+
+    <!-- Control buttons section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <Button
+            android:id="@+id/up_btn"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:layout_marginBottom="10dp"
+            android:text="↑"
+            android:textSize="24sp"
+            android:backgroundTint="?android:attr/colorAccent"
+            android:textColor="@android:color/white" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/left_btn"
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:layout_marginEnd="10dp"
+                android:text="←"
+                android:textSize="24sp"
+                android:backgroundTint="?android:attr/colorAccent"
+                android:textColor="@android:color/white" />
+
+            <Button
+                android:id="@+id/toggle_mode_btn"
+                android:layout_width="120dp"
+                android:layout_height="70dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:text="Auto"
+                android:textSize="20sp"
+                android:backgroundTint="?android:attr/colorAccent"
+                android:textColor="@android:color/white" />
+
+            <Button
+                android:id="@+id/right_btn"
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:text="→"
+                android:textSize="24sp"
+                android:backgroundTint="?android:attr/colorAccent"
+                android:textColor="@android:color/white" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/down_btn"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:text="↓"
+            android:textSize="24sp"
+            android:backgroundTint="?android:attr/colorAccent"
+            android:textColor="@android:color/white" />
+    </LinearLayout>
+</LinearLayout>
